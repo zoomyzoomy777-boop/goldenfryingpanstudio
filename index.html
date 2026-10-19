@@ -447,9 +447,9 @@ const src = n => IMG[n];
 
 /* ---------- MOSAIC (layout from the Figma grid) ---------- */
 const layout = [
-  ['__game','w2 h2'],['wires',''],['__title','w2'],['star','h2'],['white-noise',''],
-  ['night-block',''],['green-eye','w2 h2'],['thorn','w2'],
-  ['crimson',''],['crows',''],['undergrowth',''],['reach',''],['red-line','']
+  ['__game','w2 h2'],['__tactics','w2 h2'],['wires',''],['__title','w2'],['star','h2'],['white-noise',''],
+  ['night-block',''],['green-eye','w2 h2'],['thorn','w2 h2'],
+  ['crimson','w2'],['crows',''],['undergrowth',''],['reach',''],['red-line','w2']
 ];
 const mosaic = document.getElementById('mosaic');
 layout.forEach(([id,cls])=>{
@@ -459,6 +459,10 @@ layout.forEach(([id,cls])=>{
     a.innerHTML = `<div class="bg"></div><span class="tag mono">Playable · Mini Game</span><div class="meta"><b>Golden Pan<br>vs Golden Men</b><span class="demo mono">DEMO</span><span class="play mono">▶ PLAY</span></div>`;
     a.firstChild.style.backgroundImage = `url(${PIC_WOUNDS})`;
     a.addEventListener('click', e => { e.preventDefault(); scrollTo({top:0, behavior:'smooth'}); setTimeout(() => document.getElementById('play').click(), 600); });
+  } else if(id==='__tactics'){   // standalone auto battler built from the Ragnarok Online client assets
+    a.href = 'games/poring-tactics/'; a.className = 'tile game-card '+cls;
+    a.innerHTML = `<div class="bg"></div><span class="tag mono">Playable · Auto Battler</span><div class="meta"><b>Poring<br>Tactics</b><span class="demo mono">NEW</span><span class="play mono">▶ PLAY</span></div>`;
+    a.firstChild.style.backgroundImage = 'url(games/poring-tactics/title.jpg)';
   } else if(id==='__title'){
     const w = byId.souwave;
     a.href = '#work-souwave'; a.className = 'tile title-card '+cls;
@@ -470,7 +474,7 @@ layout.forEach(([id,cls])=>{
   }
   mosaic.appendChild(a);
 });
-document.getElementById('work-count').textContent = `${WORKS.length+1} projects · 2023–2026`;
+document.getElementById('work-count').textContent = `${WORKS.length+2} projects · 2023–2026`;
 
 /* ---------- ROUTER ---------- */
 const detail = document.getElementById('detail');
