@@ -544,7 +544,7 @@ new IntersectionObserver(([e])=>heroVisible=e.isIntersecting).observe(document.q
     }
   }
   if(reduce){ draw(0); return; }
-  (function loop(t){ if(heroVisible) draw(t); requestAnimationFrame(loop); })(0);
+  (function loop(t){ if(heroVisible && !document.body.classList.contains('gaming')) draw(t); requestAnimationFrame(loop); })(0);   // the mini game covers the fireflies
 })();
 
 route();
@@ -683,14 +683,17 @@ route();
   }
 
   /* ---------- sound (tiny WebAudio synth) ---------- */
+  const sfxT = {}, NOISE = {};
   function sfx(type){
     if(muted) return;
     try{ ac = ac || new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
     const t = ac.currentTime;
+    if(t - (sfxT[type] ?? -1) < .05) return; sfxT[type] = t;   // multi-hit swings: one copy of each sound per 50ms, not dozens of stacked voices
     const tone = (f,d,w,v,dl=0) => { const o=ac.createOscillator(), gn=ac.createGain(); o.type=w; o.frequency.setValueAtTime(f,t+dl);
       gn.gain.setValueAtTime(v,t+dl); gn.gain.exponentialRampToValueAtTime(.0001,t+dl+d); o.connect(gn).connect(ac.destination); o.start(t+dl); o.stop(t+dl+d+.02); };
-    const noise = (d,v,f,dl=0) => { const b=ac.createBuffer(1, Math.ceil(ac.sampleRate*d), ac.sampleRate), ch=b.getChannelData(0);
-      for(let i=0;i<ch.length;i++) ch[i]=(Math.random()*2-1)*(1-i/ch.length)**2;
+    const noise = (d,v,f,dl=0) => { let b = NOISE[d];
+      if(!b){ b = NOISE[d] = ac.createBuffer(1, Math.ceil(ac.sampleRate*d), ac.sampleRate); const ch=b.getChannelData(0);   // noise buffers are built once and reused
+        for(let i=0;i<ch.length;i++) ch[i]=(Math.random()*2-1)*(1-i/ch.length)**2; }
       const sr=ac.createBufferSource(), bq=ac.createBiquadFilter(), gn=ac.createGain(); sr.buffer=b; bq.type='bandpass'; bq.frequency.value=f; bq.Q.value=1.2; gn.gain.value=v;
       sr.connect(bq).connect(gn).connect(ac.destination); sr.start(t+dl); };
     if(type==='hit'){ const j = .85+Math.random()*.3, v = Math.random()*5|0;   // several pan-hit flavours, pitch-jittered
@@ -717,10 +720,14 @@ route();
 
   /* ---------- fx helpers ---------- */
   function burst(x,y,n,spd=260,cols=['#ffe6a6','#f2c14e','#b07a16']){
+    n = Math.min(n, 500 - s.fx.length);   // particle budget
     for(let i=0;i<n;i++){ const a=Math.random()*TAU, v=spd*(.3+Math.random()*.7), l=.4+Math.random()*.6;
       s.fx.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-140,life:l,max:l,r:1.5+Math.random()*2.8,c:cols[i%cols.length]}); }
   }
-  const text = (x,y,t,c,big) => s.tx.push({x,y,t,c,big,life:big?1.4:.9});
+  const text = (x,y,t,c,big) => {
+    if(s.tx.length >= 60){ const i = s.tx.findIndex(o => !o.big); s.tx.splice(i<0 ? 0 : i, 1); }   // text budget: drop the oldest small number first
+    s.tx.push({x,y,t,c,big,life:big?1.4:.9});
+  };
   const ring = (x,y,c,r) => s.fx.push({ring:1,x,y,c,r,life:.7,max:.7});
 
   /* ---------- core rules ---------- */
@@ -919,7 +926,8 @@ route();
   }
 
   /* ---------- drawing ---------- */
-  function goldGrad(c=RAMPS.gold){ const gr=g.createLinearGradient(-22,-118,24,-10); gr.addColorStop(0,c[0]); gr.addColorStop(.28,c[1]); gr.addColorStop(.62,c[2]); gr.addColorStop(1,c[3]); return gr; }
+  const GRADS = new Map(), FLASH = ['#ffffff','#fffaf0','#fff3d1','#ffe6a6'];   // gradients are fixed in sprite space: build once per ramp
+  function goldGrad(c=RAMPS.gold){ let gr = GRADS.get(c); if(!gr){ gr=sg.createLinearGradient(-22,-118,24,-10); gr.addColorStop(0,c[0]); gr.addColorStop(.28,c[1]); gr.addColorStop(.62,c[2]); gr.addColorStop(1,c[3]); GRADS.set(c,gr); } return gr; }
   function shadow(x,w){ g.fillStyle='rgba(0,0,0,.45)'; g.beginPath(); g.ellipse(x,GY+2,w,5,0,0,TAU); g.fill(); }
 
   function drawMan(e){
@@ -928,8 +936,7 @@ route();
     if(e.dead){ g.globalAlpha = Math.max(0, 1-e.dead/.8); }
     g.scale(e.face*e.sc*CS, e.sc*CS);
     if(e.dead) g.rotate(-Math.min(1, e.dead*2.5)*1.45);
-    if(e.flash) g.filter = `brightness(${1+e.flash*1.6})`;
-    const G = goldGrad(), w = e.st==='walk' ? Math.sin(e.ph) : 0;
+    const G = goldGrad(e.flash > .25 ? FLASH : RAMPS.gold), w = e.st==='walk' ? Math.sin(e.ph) : 0;   // hit flash = white ramp (canvas filters are slow)
     g.lineCap='round'; g.lineJoin='round';
     // back arm
     g.strokeStyle='#7a5410'; g.lineWidth=8;
@@ -973,7 +980,6 @@ route();
       g.fillStyle='#9fd8ff'; g.beginPath(); g.arc(42,-82,r,0,TAU); g.fill();
       g.fillStyle='#e8f6ff'; g.beginPath(); g.arc(42,-82,r*.5,0,TAU); g.fill();
     }
-    g.filter = 'none';
     g.restore();
     if(!e.dead && e.hp<e.max){
       const bw=36*e.sc*CS, y=GY-(e.mage?156:140)*e.sc*CS;
@@ -990,8 +996,7 @@ route();
     if(e.dead){ g.globalAlpha = Math.max(0, 1-e.dead/.8); }
     g.scale(e.face*e.sc*CS, e.sc*CS);
     if(e.dead) g.rotate(-Math.min(1, e.dead*2.5)*1.45);
-    if(e.flash) g.filter = `brightness(${1+e.flash*1.2})`;
-    const G = goldGrad(C);
+    const G = goldGrad(e.flash > .25 ? FLASH : C);
     g.lineCap='round'; g.lineJoin='round';
     // behind the body
     if(k==='king'){ g.fillStyle='#8a2a0e'; g.beginPath(); g.moveTo(-14,-98); g.quadraticCurveTo(-34,-60,-36-w*4,-8); g.lineTo(-8,-12); g.quadraticCurveTo(-14,-60,4,-96); g.fill();
@@ -1068,7 +1073,6 @@ route();
     else { g.strokeStyle=C[1]; g.lineWidth=4; g.beginPath(); g.moveTo(-10,0); g.lineTo(42,0); g.arc(42,-8,8,Math.PI*.5,-Math.PI*.9,true); g.stroke();
       g.fillStyle=C[3]; for(const x of [4,16,28]) g.fillRect(x,-2.5,4,5); }
     g.restore();
-    g.filter = 'none';
     g.restore();
   }
 
@@ -1239,7 +1243,7 @@ route();
     for(const t of s.tx){
       const x = Math.round(t.x), y = Math.round(t.y);
       g.globalAlpha=Math.min(1,t.life*2.5); g.font = (t.big ? '12px ' : '10px ') + PF;
-      g.fillStyle='#000'; for(const [ox,oy] of [[-2,0],[2,0],[0,-2],[0,2],[2,2]]) g.fillText(t.t,x+ox,y+oy);
+      g.strokeStyle='#000'; g.lineWidth=4; g.lineJoin='miter'; g.strokeText(t.t,x,y); g.fillStyle='#000'; g.fillText(t.t,x+2,y+2);
       g.fillStyle=t.c; g.fillText(t.t,x,y);
     }
     g.globalAlpha=1;
@@ -1259,11 +1263,15 @@ route();
     sg.putImageData(im,0,0);
   }
   /* whole frame: limited palette + stepped alpha */
+  const BAYO = BAY.map(b => Math.round((b-128)*.14));   // ordered-dither offsets, precomputed
   function posterize(){
-    const im = pg.getImageData(0,0,pc.width,pc.height), d = im.data;
-    const w = pc.width;
-    for(let k=0, i=0; k<d.length; k+=4, i++){ const a=d[k+3]; if(a){ const o = (BAY[((i/w|0)&3)*4+(i%w&3)]-128)*.14, cl = v => v+o < 0 ? 0 : v+o > 255 ? 255 : v+o;   // ordered dither between palette steps
-      const c = pal(cl(d[k]),cl(d[k+1]),cl(d[k+2])); d[k]=c>>16; d[k+1]=c>>8&255; d[k+2]=c&255; } d[k+3] = a<24 ? 0 : Math.min(255, Math.round(a/51)*51); }
+    const w = pc.width, h = pc.height, im = pg.getImageData(0,0,w,h), d = im.data;
+    for(let y=0, k=0; y<h; y++){ const row = (y&3)*4;
+      for(let x=0; x<w; x++, k+=4){ const a = d[k+3]; if(!a) continue;
+        const o = BAYO[row+(x&3)];   // ordered dither between palette steps
+        let r = d[k]+o, gr = d[k+1]+o, b = d[k+2]+o; r = r<0?0:r>255?255:r; gr = gr<0?0:gr>255?255:gr; b = b<0?0:b>255?255:b;
+        let c = PCACHE[(r>>3)<<10 | (gr>>3)<<5 | (b>>3)]; if(c < 0) c = pal(r,gr,b);
+        d[k]=c>>16; d[k+1]=c>>8&255; d[k+2]=c&255; d[k+3] = a<24 ? 0 : a>229 ? 255 : Math.round(a/51)*51; } }
     pg.putImageData(im,0,0);
   }
 
