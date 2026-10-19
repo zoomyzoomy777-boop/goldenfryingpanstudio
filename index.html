@@ -254,6 +254,8 @@ body.gaming{overflow:hidden}
 .g-ic{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:rgba(18,13,6,.6);backdrop-filter:blur(10px);font-size:13px!important;display:grid;place-items:center;padding:0}
 .g-ic:hover{border-color:rgba(242,193,78,.55);box-shadow:0 0 18px -4px var(--glow)}
 .g-ic.off{opacity:.45}
+#g-auto{width:auto;border-radius:20px;padding:0 12px;font-size:10px!important;letter-spacing:.08em;opacity:.6}
+#g-auto.on{opacity:1;color:#1a0604;background:var(--magenta);border-color:var(--magenta);box-shadow:0 0 18px -4px var(--glow)}
 .g-skills{position:absolute;left:var(--gut);bottom:30px;display:flex;gap:18px;align-items:end}
 .sk{position:relative;width:60px;height:60px;border-radius:50%;border:2px solid rgba(242,193,78,.5);background:radial-gradient(circle at 50% 38%,rgba(70,50,14,.95),rgba(10,7,3,.95));display:grid;place-items:center;padding:0;touch-action:none}
 .sk .ico{position:relative;z-index:1;width:36px;height:36px;background:center/contain no-repeat}
@@ -320,6 +322,7 @@ body.gaming{overflow:hidden}
     <canvas id="game" aria-label="Golden Pan mini game"></canvas>
     <div class="g-ui" id="gui" hidden>
       <div class="g-top">
+        <button type="button" class="g-ic" id="g-auto" aria-label="Auto play (O)" aria-pressed="false" title="Auto (O)">AUTO</button>
         <button type="button" class="g-ic" id="g-pause" aria-label="Pause (P)" title="Pause (P)">❚❚</button>
         <button type="button" class="g-ic" id="g-mute" aria-label="Sound (M)" title="Sound (M)">♪</button>
         <button type="button" class="g-ic" id="g-exit" aria-label="Exit game" title="Exit">✕</button>
@@ -847,8 +850,34 @@ route();
     if(mode==='panel') renderStats(); else if(s) text(s.p.x, GY-s.p.jy-150*CS, ULTS[ultSel][1], '#ffe6a6');
   }
 
+  /* auto play: walk to the nearest golden man, swing when in reach, hop over punches and turtle waves, fire the ultimate (stat points stay manual) */
+  let auto = false;
+  function autoPilot(){
+    const p = s.p, ground = p.jy<=0 && p.vy<=0;
+    let near = null, nd = 1e9, crowd = 0;
+    for(const e of s.en){ if(e.dead) continue; const d = Math.abs(e.x-p.x); if(e.x>0 && e.x<W) crowd++; if(d < nd){ nd = d; near = e; } }
+    // dodge: jump right before a punch lands or a turtle wave arrives
+    if(ground){
+      const punch = s.en.some(e => !e.dead && e.st==='wind' && e.t < (e.boss?.22:.12) && Math.abs(p.x-e.x) < (30*e.sc+32)*CS);
+      const wave = s.wv.some(w => !w.back && Math.sign(p.x-w.x)===w.dir && Math.abs(p.x-w.x) < 40+w.spd*.12);
+      if(punch || wave) jump();
+    }
+    if(s.mp >= ULT_MP && !panBusy() && (s.en.some(e => e.boss && !e.dead) || crowd >= 4)) ult();
+    keys.l = keys.r = keys.atk = 0;
+    if(!near) return;
+    const reach = (112+22*near.sc)*CS*.8, dir = near.x >= p.x ? 1 : -1;
+    if(nd > reach || s.ride > 0) keys[dir>0 ? 'r' : 'l'] = 1; else p.face = dir;
+    keys.atk = nd < reach*1.25 ? 1 : 0;
+  }
+  function setAuto(on){
+    auto = on; const b = $('g-auto'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on);
+    keys.l = keys.r = keys.atk = 0;
+    if(s && mode==='play') text(s.p.x, GY-s.p.jy-150*CS, on ? 'AUTO ON' : 'AUTO OFF', '#ffe6a6');
+  }
+
   function update(dt){
     const p = s.p, m0 = hpMul(), st0 = step(); s.time += dt;
+    if(auto) autoPilot();
     if(hpMul() > m0) text(W/2, H*.3, `GOLDEN MEN HP ×${hpMul()}`, '#ff9a2f', true);
     if(step() > st0){ text(W/2, H*.38, `GOLDEN MEN ATK ×${atkMul().toFixed(2)} · SPAWN UP`, '#ff7a50', true); for(let i=0; i<Math.min(4,step()); i++) spawn(); }
     if((s.bossT -= dt) <= 0){ s.bossT = BOSS_T; spawnBoss(); }
@@ -1318,7 +1347,7 @@ route();
     }
     if(s.time < 8){
       g.globalAlpha = Math.min(1,(8-s.time)/1.5); g.textAlign='center'; g.fillStyle='#fff3d1'; g.font='500 12px "JetBrains Mono", monospace';
-      const lines = SW>760 ? ['A / D  เดิน   ·   W  กระโดด   ·   J / คลิกค้าง  ตี   ·   K / คลิกขวา  ไม้ตาย (5 MP)   ·   V  สลับไม้ตาย   ·   C  อัพสเตตัส   ·   P  พัก']
+      const lines = SW>760 ? ['A / D  เดิน   ·   W  กระโดด   ·   J / คลิกค้าง  ตี   ·   K / คลิกขวา  ไม้ตาย (5 MP)   ·   V  สลับไม้ตาย   ·   C  อัพสเตตัส   ·   O  ออโต้   ·   P  พัก']
                           : ['◀ ▶ เดิน · ▲ กระโดด · J/แตะจอ ตี','K ไม้ตาย (5 MP) · V สลับ · C อัพสเตตัส'];
       lines.forEach((t,i) => g.fillText(t, SW/2, SH*.22+i*20)); g.globalAlpha=1;
     }
@@ -1381,7 +1410,7 @@ route();
     if(m!=='play') keys.l = keys.r = keys.atk = 0;
   }
   function showModal(m,title,body,label,act){ $('gm-t').textContent=title; $('gm-s').innerHTML=body; $('gm-a').textContent=label; onA=act; setMode(m); $('gm-a').focus({preventScroll:true}); }
-  const help = 'A/D หรือ ◀ ▶ เดิน · W / ↑ / ▲ = กระโดด · J / Space / คลิกค้าง = ตี · K / คลิกขวา = ไม้ตาย (ใช้ 5 MP) · V = สลับไม้ตาย · ตีให้ตรงจังหวะคลื่นเต่าเพื่อสะท้อนกลับ · C = อัพสเตตัส · P = พัก · M = เสียง';
+  const help = 'A/D หรือ ◀ ▶ เดิน · W / ↑ / ▲ = กระโดด · J / Space / คลิกค้าง = ตี · K / คลิกขวา = ไม้ตาย (ใช้ 5 MP) · V = สลับไม้ตาย · ตีให้ตรงจังหวะคลื่นเต่าเพื่อสะท้อนกลับ · C = อัพสเตตัส · O = เล่นอัตโนมัติ · P = พัก · M = เสียง';
   const pause = () => showModal('pause','PAUSED',help,'เล่นต่อ',() => setMode('play'));
   function over(){
     sfx('die'); const nb = s.lv > best;
@@ -1419,6 +1448,7 @@ route();
     else if(c==='KeyC' || c==='Tab'){ if(mode==='play') setMode('panel'); else if(mode==='panel') setMode('play'); }
     else if(c==='KeyP' || c==='Escape'){ if(mode==='play') pause(); else if(mode==='panel' || mode==='pause') setMode('play'); }
     else if(c==='KeyM') toggleMute();
+    else if(c==='KeyO'){ if(mode==='play' || mode==='panel') setAuto(!auto); }
     else if(/^Digit[1-6]$/.test(c)) add(STATS[+c[5]-1][0]);
     else if(c==='Enter' && (mode==='over' || mode==='pause')) onA();
     else if(c==='KeyW' || c==='ArrowUp'){ if(!e.repeat) jump(); }
@@ -1459,6 +1489,7 @@ route();
   $('g-pause').addEventListener('click', () => { if(mode==='play') pause(); else if(mode==='pause') setMode('play'); });
   function toggleMute(){ muted = !muted; $('g-mute').classList.toggle('off', muted); }
   $('g-mute').addEventListener('click', toggleMute);
+  $('g-auto').addEventListener('click', () => { if(s) setAuto(!auto); });
   $('play').addEventListener('click', start);
   document.addEventListener('visibilitychange', () => { if(document.hidden && mode==='play') pause(); });
 })();
