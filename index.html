@@ -769,7 +769,7 @@ route();
       e.kb = dir*(isUlt?520:230)/e.sc;
       if(e.st==='wind' || e.st==='cast'){ if(e.st==='cast') e.cd = 1.2; e.st='rec'; e.t=.35; }
     }
-    text(e.x+i*8*dir, GY-128*e.sc*CS-i*12, crit ? (kill1 ? 'CRIT! ONE-SHOT' : e.boss ? 'CRIT! -0.5%' : 'CRIT! -5%') : String(Math.round(dmg*10)/10), crit?'#ff9a2f':'#fff3d1', crit);
+    text(e.x+i*8*dir, GY-128*e.sc*CS-i*12, crit ? (kill1 ? 'CRIT! ONE-SHOT' : `CRIT! ${Math.round(dmg*10)/10}`) : String(Math.round(dmg*10)/10), crit?'#ff9a2f':'#fff3d1', crit);
     burst(e.x, GY-105*e.sc*CS, crit?24:7, 260, e.boss ? RAMPS[e.col].slice(0,3) : undefined);
     if(e.boss && !e.rage && e.hp>0 && e.hp < e.max*.5) enrage(e);
     if(e.hp<=0) kill(e);
