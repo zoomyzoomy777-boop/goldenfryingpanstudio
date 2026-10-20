@@ -212,6 +212,7 @@ body{background:
 .tile:hover,.tile:focus-visible{border-color:rgba(242,193,78,.5);box-shadow:var(--glass-edge),0 0 0 1px rgba(242,193,78,.25),0 0 40px -8px var(--glow)}
 .tile::after{background:linear-gradient(to top,rgba(7,5,3,.9),transparent 60%)}
 .tile .tag{border-radius:999px;background:rgba(18,13,6,.7);border:1px solid var(--line)}
+.tile .edu{position:absolute;z-index:2;top:36px;left:10px;padding:3px 8px;border-radius:999px;background:rgba(18,13,6,.75);border:1px solid rgba(255,200,120,.35);color:#ffd27a;font-size:9px;letter-spacing:.12em;text-transform:uppercase}
 .tile.title-card{padding:22px;background:
   radial-gradient(120% 90% at 100% 0%,rgba(242,193,78,.35),transparent 55%),
   radial-gradient(90% 80% at 0% 100%,rgba(255,140,40,.18),transparent 60%),
@@ -461,7 +462,7 @@ layout.forEach(([id,cls])=>{
     a.addEventListener('click', e => { e.preventDefault(); scrollTo({top:0, behavior:'smooth'}); setTimeout(() => document.getElementById('play').click(), 600); });
   } else if(id==='__tactics'){   // standalone auto battler built from the Ragnarok Online client assets
     a.href = 'games/poring-tactics/'; a.className = 'tile game-card '+cls;
-    a.innerHTML = `<div class="bg"></div><span class="tag mono">Playable · Auto Battler</span><div class="meta"><b>Poring<br>Tactics</b><span class="demo mono">NEW</span><span class="play mono">▶ PLAY</span></div>`;
+    a.innerHTML = `<div class="bg"></div><span class="tag mono">Playable · Auto Battler</span><span class="edu mono">Educational project · Non-commercial</span><div class="meta"><b>Poring<br>Tactics</b><span class="demo mono">NEW</span><span class="play mono">▶ PLAY</span></div>`;
     a.firstChild.style.backgroundImage = 'url(games/poring-tactics/title.jpg)';
   } else if(id==='__title'){
     const w = byId.souwave;
