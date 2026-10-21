@@ -461,9 +461,9 @@ layout.forEach(([id,cls])=>{
     a.firstChild.style.backgroundImage = `url(${PIC_WOUNDS})`;
     a.addEventListener('click', e => { e.preventDefault(); scrollTo({top:0, behavior:'smooth'}); setTimeout(() => document.getElementById('play').click(), 600); });
   } else if(id==='__tactics'){   // standalone auto battler built from the Ragnarok Online client assets
-    a.href = 'games/poring-tactics/'; a.className = 'tile game-card '+cls;
+    a.href = 'https://zoomyzoomy777-boop.github.io/poring-tactics/'; a.className = 'tile game-card '+cls;
     a.innerHTML = `<div class="bg"></div><span class="tag mono">Playable · Auto Battler</span><span class="edu mono">Educational project · Non-commercial</span><div class="meta"><b>Poring<br>Tactics</b><span class="demo mono">NEW</span><span class="play mono">▶ PLAY</span></div>`;
-    a.firstChild.style.backgroundImage = 'url(games/poring-tactics/title.jpg)';
+    a.firstChild.style.backgroundImage = 'url(https://zoomyzoomy777-boop.github.io/poring-tactics/title.jpg)';
   } else if(id==='__title'){
     const w = byId.souwave;
     a.href = '#work-souwave'; a.className = 'tile title-card '+cls;
